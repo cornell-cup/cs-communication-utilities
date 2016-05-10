@@ -22,7 +22,7 @@ private:
 	/**
 	 * Whether or not the connection is up and alive
 	 */
-	bool connected;
+	int connected;
 
 	/**
 	 * The connection handle
@@ -63,7 +63,7 @@ public:
 	 * 
 	 * @return		Boolean whether or not the connection is alive
 	 */
-	bool isConnected();
+	int isConnected();
 
 	/**
 	 * Read bytes of data from the port.
@@ -81,7 +81,7 @@ public:
 	 * @param len		The number of bytes to write
 	 * @return		Whether or not the write was successful
 	 */
-	bool write(char * buffer, unsigned int len);
+	int write(char * buffer, unsigned int len);
 
 	/**
 	 * Reads lines of data from the port.

@@ -1,7 +1,7 @@
 #include "SerialPort.h"
 
 SerialPort::SerialPort(std::string inPort, int inBaudrate) :
-	port(inPort), baudrate(inBaudrate), connected(false) {
+	port(inPort), baudrate(inBaudrate), connected(0) {
 	conn = CreateFile(std::wstring(port.begin(), port.end()).c_str(),
 		GENERIC_READ | GENERIC_WRITE,
 		0, NULL,
@@ -48,7 +48,7 @@ void SerialPort::connect() {
 
 }
 
-bool SerialPort::isConnected() {
+int SerialPort::isConnected() {
 	return connected;
 }
 
@@ -74,15 +74,15 @@ int SerialPort::read(char * outBuffer, unsigned int maxlen) {
 	return 0;
 }
 
-bool SerialPort::write(char * buffer, unsigned int len) {
+int SerialPort::write(char * buffer, unsigned int len) {
 	unsigned long sent;
 
 	if (!WriteFile(conn, (void *)buffer, len, &sent, NULL)) {
 		ClearCommError(conn, &errors, &status);
 
-		return false;
+		return 0;
 	}
 	else {
-		return true;
+		return 1;
 	}
 }

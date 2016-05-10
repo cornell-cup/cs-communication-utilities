@@ -1,9 +1,10 @@
 #pragma once
 
-#include "stdafx.h"
-#include<stdio.h>
-#include<string>
-#include<winsock2.h>
+#include <stdio.h>
+#include <string>
+#include <Windows.h>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 
 
@@ -27,8 +28,8 @@ private:
 		
 		std::string IPADDRESS;
 		int PORT;
-		int st;
-		struct sockaddr_in Addr;
+		int socket;
+		struct sockaddr_in addr;
 
 public:
 	/**
