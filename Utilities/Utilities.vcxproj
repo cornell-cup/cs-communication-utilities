@@ -142,9 +142,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="SerialPort.h" />
     <ClInclude Include="TCPSocketClient.h" />
     <ClInclude Include="UDPSocketClient.h" />
@@ -154,7 +151,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SerialPort.cpp" />
-    <ClCompile Include="TCPSocketClient.cpp" />
     <ClCompile Include="UDPSocketClient.cpp" />
     <ClCompile Include="UDPSocketServer.cpp" />
     <ClCompile Include="Utilities.cpp" />
