@@ -151,6 +151,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SerialPort.cpp" />
+    <ClCompile Include="TCPSocketClient.cpp" />
+    <ClCompile Include="TCPSocketServer.cpp" />
     <ClCompile Include="UDPSocketClient.cpp" />
     <ClCompile Include="UDPSocketServer.cpp" />
     <ClCompile Include="Utilities.cpp" />

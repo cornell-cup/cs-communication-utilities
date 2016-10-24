@@ -13,9 +13,9 @@
 
 #include "SerialPort.h"
 #include "UDPSocketServer.h"
-//#include "TCPSocketServer.h"
+#include "TCPSocketServer.h"
 #include "UDPSocketClient.h"
-//#include "TCPSocketClient.h"
+#include "TCPSocketClient.h"
 
 #if _WIN32
 #else
@@ -113,7 +113,29 @@ int main(int argc, char** argv)
 		}
 	}
 	else if (strncmp(argv[1], "tcpserver", 9) == 0) {
-		// Echo server with connections
+		// Echo server
+		if (argc < 4) {
+			printf("Usage: %s %s <address> <port>\n", argv[0], argv[1]);
+			return 1;
+		}
+		TCPSocketServer conn(std::string(argv[2]), std::atoi(argv[3]));
+		conn.server([](SOCKET clientId, unsigned int eventType, char * buffer, unsigned int buffer_len) {
+			if (eventType == TCPSocketServer::CLIENT_CONNECT) {
+				printf("New client connected\n");
+			}
+			else if (eventType == TCPSocketServer::CLIENT_DISCONNECT) {
+				printf("Client disconnected\n");
+			}
+			else {
+				printf(buffer);
+			}
+		});
+		if (conn.isListening()) {
+			while (!quit) {
+
+			}
+			conn.close();
+		}
 	}
 	else if (strncmp(argv[1], "udpclient", 9) == 0) {
 		// Send a count every second
@@ -139,7 +161,27 @@ int main(int argc, char** argv)
 		}
 	}
 	else if (strncmp(argv[1], "tcpclient", 9) == 0) {
-		// Send a count every second with a connection
+		// Send a count every second
+		if (argc < 4) {
+			printf("Usage: %s %s <address> <port>\n", argv[0], argv[1]);
+			return 1;
+		}
+		TCPSocketClient conn(std::string(argv[2]), std::atoi(argv[3]));
+		if (conn.isConnected()) {
+			std::chrono::time_point<std::chrono::system_clock> start, end;
+
+			start = std::chrono::system_clock::now();
+			char * buffer = new char[4096];
+			memset(buffer, 0, 4096);
+			int counter = 0;
+			while (!quit) {
+				printf("Sending %d\n", counter);
+				std::string send = std::to_string(counter) + "\n";
+				conn.write(send.c_str(), send.size());
+				counter++;
+				Sleep(1000);
+			}
+		}
 	}
 
     return 0;

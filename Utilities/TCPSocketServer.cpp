@@ -1,49 +1,77 @@
 #include "TCPSocketServer.h"
 
-
-#define DEFAULT_BUFFER_SIZE 512
-#define SOCKET_ERROR -1
-#define INVALID_SOCKET -1
-#define SOCKET_READ_TIMEOUT_SEC 1
-
-
-TCPSocketServer::TCPSocketServer(std::string address, int port) {
-	if ((st = socket(AF_INET, SOCK_DGRAM, IPPROTO_TCP)) == INVALID_SOCKET)
-	{
-		printf("Could not create socket.\n");
+TCPSocketServer::TCPSocketServer(std::string inAddress, int inPort) :
+	address(inAddress), port(inPort), listening(0), closeMessage(0) {
+	if ((socketId = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET) {
+		printf("TCPSocketServer: Could not create socket.\n");
 		return;
 	}
-	else
-	{
-		printf("Socket created.\n");
-	}
 
-	Addr.sin_family = AF_INET;
-	Addr.sin_addr.s_addr = inet_addr(IPADDRESS.c_str());
-	Addr.sin_port = htons(PORT);
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(address.c_str());
+	addr.sin_port = htons(port);
 
-	if (bind(st, (SOCKADDR*)&Addr, sizeof(Addr)) == SOCKET_ERROR)
-	{
-		printf("Connection error :: binding.\n");
+	if (bind(socketId, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+		printf("TCPSocketServer: Error binding to the socket address.\n");
 		return;
 	}
-	else
-	{
-		printf("Connected.\n");
-	}
 
-	return;
+	if (listen(socketId, SOMAXCONN) == SOCKET_ERROR) {
+		printf("TCPSocketServer: Error listening on socket address.\n");
+		return;
+	}
 }
 
 TCPSocketServer::~TCPSocketServer() {
-	printf("object being destroyed");
-
+	shutdown(socketId, SD_SEND);
+	closesocket(socketId);
 }
 
-int TCPSocketServer::server() {
-	//implement function here
+int TCPSocketServer::isListening() {
+	return listening;
 }
 
-int TCPSocketServer::send() {
-	//implement function here
+void TCPSocketServer::server(std::function<void(SOCKET, unsigned int, char *, unsigned int)> handler) {
+	std::thread(&TCPSocketServer::handle, this, handler).detach();
+	listening = 1;
+}
+
+void TCPSocketServer::handle(std::function<void(SOCKET, unsigned int, char *, unsigned int)> handler) {
+	SOCKET clientId;
+
+	while (!closeMessage && (clientId = accept(socketId, NULL, NULL))) {
+		// TODO maintain a list of all clients
+		std::thread(&TCPSocketServer::handleClient, this, clientId, handler).detach();
+	}
+}
+
+void TCPSocketServer::handleClient(SOCKET clientId, std::function<void(SOCKET, unsigned int, char *, unsigned int)> handler) {
+	// Sent connect event to handler
+	handler(clientId, CLIENT_CONNECT, NULL, 0);
+
+	char * buffer = new char[DEFAULT_BUFFER_SIZE];
+	unsigned int buffer_len = DEFAULT_BUFFER_SIZE;
+	unsigned int len = 0;
+
+	memset(buffer, 0, buffer_len);
+	while (!closeMessage) {
+		len = recv(clientId, buffer, buffer_len, NULL);
+		int error = WSAGetLastError();
+		if (error != 0) {
+			// Send close event
+			handler(clientId, CLIENT_DISCONNECT, NULL, 0);
+			break;
+		}
+		else if (len > 0) {
+			handler(clientId, CLIENT_DATA, buffer, len);
+			memset(buffer, 0, buffer_len);
+		}
+	}
+
+	closeMessage = 0;
+	delete buffer;
+}
+
+void TCPSocketServer::close() {
+	closeMessage = 1;
 }
