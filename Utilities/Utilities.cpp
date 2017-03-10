@@ -6,9 +6,12 @@
 #include <chrono>
 
 #if _WIN32
-#include <WinSock2.h>
-#include <Windows.h>
+#	define _WINSOCK_DEPRECATED_NO_WARNINGS
+#	include <WinSock2.h>
+#	include <Windows.h>
 #else
+#	include <signal.h>
+#	define Sleep(x) sleep(x/1000)
 #endif
 
 #include "SerialPort.h"
@@ -16,11 +19,6 @@
 #include "TCPSocketServer.h"
 #include "UDPSocketClient.h"
 #include "TCPSocketClient.h"
-
-#if _WIN32
-#else
-#include <signal.h>
-#endif
 
 // Exit
 volatile int quit = 0;
@@ -45,10 +43,12 @@ void interruptHandler(int type) {
 /**
  * Initialize WinSock
  */
+#ifdef _WIN32
 void initWSA() {
 	WSADATA data;
 	WSAStartup(MAKEWORD(2, 2), &data);
 }
+#endif
 
 // This main function is for testing all the socket and serial port classes
 
@@ -68,11 +68,10 @@ int main(int argc, char** argv)
 	// Set interrupt handler
 #if _WIN32
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE) interruptHandler, TRUE);
+	initWSA();
 #else
 	signal(SIGINT, interruptHandler);
 #endif
-
-	initWSA();
 
 	if (strncmp(argv[1], "serial", 6) == 0) {
 		// Monitor a serial port
@@ -154,7 +153,7 @@ int main(int argc, char** argv)
 			while (!quit) {
 				printf("Sending %d\n", counter);
 				std::string send = std::to_string(counter) + "\n";
-				conn.write(send.c_str(), send.size());
+				conn.write(send.c_str(), (unsigned int) send.size());
 				counter++;
 				Sleep(1000);
 			}
@@ -177,7 +176,7 @@ int main(int argc, char** argv)
 			while (!quit) {
 				printf("Sending %d\n", counter);
 				std::string send = std::to_string(counter) + "\n";
-				conn.write(send.c_str(), send.size());
+				conn.write(send.c_str(), (unsigned int)send.size());
 				counter++;
 				Sleep(1000);
 			}

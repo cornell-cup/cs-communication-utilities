@@ -1,19 +1,28 @@
-#pragma once
-#pragma once
+#ifndef _TCP_SOCKET_CLIENT
+#define _TCP_SOCKET_CLIENT
 
-#include <stdio.h>
-#include <string>
-#include <functional>
-#include <thread>
-
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <Windows.h>
-#pragma comment(lib, "ws2_32.lib")
+#ifdef _WIN32
+#	include <WinSock2.h>
+#	include <WS2tcpip.h>
+#	include <Windows.h>
+#else
+#	include <arpa/inet.h>
+#	include <string.h>
+#	include <sys/socket.h>
+#	include <unistd.h>
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+typedef int SOCKET;
+#endif
 
 #define DEFAULT_BUFFER_SIZE 4096
 #define SOCKET_READ_TIMEOUT_SEC 1
+#ifndef INVALID_SOCKET
+#	define INVALID_SOCKET (-1)
+#endif
+#ifndef SOCKET_ERROR
+#	define SOCKET_ERROR (-1)
+#endif
 
 /**
 * TCP socket client
@@ -36,7 +45,7 @@ private:
 	/**
 	* Associated socket id
 	*/
-	int socketId;
+	SOCKET socketId;
 
 	/**
 	* Bound socket address
@@ -68,7 +77,12 @@ public:
 		addr.sin_port = htons(port);
 
 		if (connect(socketId, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-			printf("socket failed with error: %ld\n", WSAGetLastError());
+#ifdef _WIN32
+			int error = WSAGetLastError();
+#else
+			int error = errno;
+#endif
+			printf("socket failed with error: %ld\n", error);
 			printf("TCPSocketClient: Error connecting to the socket address.\n");
 			return;
 		}
@@ -80,11 +94,7 @@ public:
 	* Deconstructor
 	*/
 	~TCPSocketClient() {
-		if (connected) {
-			closesocket(socketId);
-		}
-
-		connected = false;
+		close();
 	};
 
 	/**
@@ -107,7 +117,7 @@ public:
 	int read(char * outBuffer, unsigned int buffer_len) {
 		unsigned int len;
 
-		len = recv(socketId, outBuffer, buffer_len, NULL);
+		len = recv(socketId, outBuffer, buffer_len, 0);
 
 		return len;
 	};
@@ -120,7 +130,7 @@ public:
 	* @return		Whether or not the write was successful
 	*/
 	int write(const char * buffer, unsigned int len) {
-		if (send(socketId, buffer, len, NULL) < 0) {
+		if (send(socketId, buffer, len, 0) < 0) {
 			return 0;
 		}
 		// TODO Handle error codes and reconnection
@@ -133,9 +143,15 @@ public:
 	*/
 	void close() {
 		if (connected) {
+#ifdef _WIN32
 			closesocket(socketId);
+#else
+			::close(socketId);
+#endif
 		}
 
 		connected = false;
 	};
 };
+
+#endif

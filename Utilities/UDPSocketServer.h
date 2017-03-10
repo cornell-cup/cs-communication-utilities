@@ -1,18 +1,30 @@
-#pragma once
+#ifndef _UDP_SOCKET_SERVER
+#define _UDP_SOCKET_SERVER
 
-#include <stdio.h>
-#include <string>
-#include <functional>
+#ifdef _WIN32
+#	include <WinSock2.h>
+#	include <WS2tcpip.h>
+#	include <Windows.h>
+#else
+#	include <arpa/inet.h>
+#	include <string.h>
+#	include <sys/socket.h>
+#	include <unistd.h>
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+typedef int SOCKET;
+#endif
+
 #include <thread>
-
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <Windows.h>
-#pragma comment(lib, "ws2_32.lib")
 
 #define DEFAULT_BUFFER_SIZE 4096
 #define SOCKET_READ_TIMEOUT_SEC 1
+#ifndef INVALID_SOCKET
+#	define INVALID_SOCKET (-1)
+#endif
+#ifndef SOCKET_ERROR
+#	define SOCKET_ERROR (-1)
+#endif
 
 /**
  * Asynchronous UDP socket server
@@ -35,7 +47,7 @@ private:
 	/**
 	 * Associated socket id
 	 */
-	int socketId;
+	SOCKET socketId;
 
 	/**
 	 * Bound socket address
@@ -67,7 +79,7 @@ private:
 
 		memset(buffer, 0, buffer_len);
 		while (!closeMessage) {
-			len = recv(socketId, buffer, buffer_len, NULL);
+			len = recv(socketId, buffer, buffer_len, 0);
 			if (len > 0) {
 				handler(buffer, len);
 				memset(buffer, 0, buffer_len);
@@ -107,8 +119,7 @@ public:
 	 * Deconstructor
 	 */
 	~UDPSocketServer() {
-		shutdown(socketId, SD_SEND);
-		closesocket(socketId);
+		close();
 	};
 
 	/**
@@ -134,6 +145,13 @@ public:
 	 * Close the server and stop listening.
 	 */
 	void close() {
+#ifdef _WIN32
+		closesocket(socketId);
+#else
+		::close(socketId);
+#endif
 		closeMessage = 1;
 	};
 };
+
+#endif

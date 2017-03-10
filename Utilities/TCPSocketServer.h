@@ -1,18 +1,31 @@
-#pragma once
+#ifndef _TCP_SOCKET_SERVER
+#define _TCP_SOCKET_SERVER
 
-#include <stdio.h>
-#include <string>
-#include <functional>
+#ifdef _WIN32
+#	include <WinSock2.h>
+#	include <WS2tcpip.h>
+#	include <Windows.h>
+#else
+#	include <errno.h>
+#	include <arpa/inet.h>
+#	include <string.h>
+#	include <sys/socket.h>
+#	include <unistd.h>
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+typedef int SOCKET;
+#endif
+
 #include <thread>
-
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <Windows.h>
-#pragma comment(lib, "ws2_32.lib")
 
 #define DEFAULT_BUFFER_SIZE 4096
 #define SOCKET_READ_TIMEOUT_SEC 1
+#ifndef INVALID_SOCKET
+#	define INVALID_SOCKET (-1)
+#endif
+#ifndef SOCKET_ERROR
+#	define SOCKET_ERROR (-1)
+#endif
 
 /**
 * Asynchronous TCP socket server
@@ -35,7 +48,7 @@ private:
 	/**
 	* Associated socket id
 	*/
-	int socketId;
+	SOCKET socketId;
 
 	/**
 	* Bound socket address
@@ -63,7 +76,7 @@ private:
 	void handle(std::function<void(SOCKET, unsigned int, char *, unsigned int)> handler) {
 		SOCKET clientId;
 
-		while (!closeMessage && (clientId = accept(socketId, NULL, NULL))) {
+		while (!closeMessage && (clientId = accept(socketId, 0, 0))) {
 			// TODO maintain a list of all clients
 			std::thread(&TCPSocketServer::handleClient, this, clientId, handler).detach();
 		}
@@ -76,7 +89,7 @@ private:
 	*/
 	void handleClient(SOCKET clientId, std::function<void(SOCKET, unsigned int, char *, unsigned int)> handler) {
 		// Sent connect event to handler
-		handler(clientId, CLIENT_CONNECT, NULL, 0);
+		handler(clientId, CLIENT_CONNECT, 0, 0);
 
 		char * buffer = new char[DEFAULT_BUFFER_SIZE];
 		unsigned int buffer_len = DEFAULT_BUFFER_SIZE;
@@ -84,11 +97,16 @@ private:
 
 		memset(buffer, 0, buffer_len);
 		while (!closeMessage) {
-			len = recv(clientId, buffer, buffer_len, NULL);
+			len = recv(clientId, buffer, buffer_len, 0);
+#ifdef _WIN32
 			int error = WSAGetLastError();
 			if (error != 0) {
+#else
+			int error = errno;
+			if (error > 0) {
+#endif
 				// Send close event
-				handler(clientId, CLIENT_DISCONNECT, NULL, 0);
+				handler(clientId, CLIENT_DISCONNECT, 0, 0);
 				break;
 			}
 			else if (len > 0) {
@@ -134,8 +152,7 @@ public:
 	* Deconstructor
 	*/
 	~TCPSocketServer() {
-		shutdown(socketId, SD_SEND);
-		closesocket(socketId);
+		close();
 	};
 
 	/**
@@ -161,6 +178,12 @@ public:
 	* Close the server and stop listening.
 	*/
 	void close() {
+#ifdef _WIN32
+		shutdown(socketId, SD_SEND);
+		closesocket(socketId);
+#else
+		::close(socketId);
+#endif
 		closeMessage = 1;
 	};
 
@@ -169,3 +192,5 @@ public:
 	const static unsigned int CLIENT_DATA = 0;
 	const static unsigned int CLIENT_DISCONNECT = -1;
 };
+
+#endif
