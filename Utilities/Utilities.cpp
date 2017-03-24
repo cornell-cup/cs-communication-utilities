@@ -11,7 +11,7 @@
 #	include <Windows.h>
 #else
 #	include <signal.h>
-#	define Sleep(x) sleep(x/1000)
+#	define Sleep(x) usleep(x*1000)
 #endif
 
 #include "SerialPort.h"
@@ -106,7 +106,7 @@ int main(int argc, char** argv)
 		});
 		if (conn.isListening()) {
 			while (!quit) {
-
+				Sleep(100);
 			}
 			conn.close();
 		}
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 		});
 		if (conn.isListening()) {
 			while (!quit) {
-
+				Sleep(100);
 			}
 			conn.close();
 		}

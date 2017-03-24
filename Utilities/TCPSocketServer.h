@@ -11,6 +11,7 @@
 #	include <string.h>
 #	include <sys/socket.h>
 #	include <unistd.h>
+#	define Sleep(x) usleep(x*1000)
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef int SOCKET;
@@ -113,6 +114,7 @@ private:
 				handler(clientId, CLIENT_DATA, buffer, len);
 				memset(buffer, 0, buffer_len);
 			}
+			Sleep(10);
 		}
 
 		closeMessage = 0;
