@@ -121,6 +121,7 @@ public:
 			opts.c_lflag |= ICANON;
 			// Commit the serial port settings
 			tcsetattr(conn, TCSANOW, &opts);
+			connected = true;
 #endif
 		}
 	};
