@@ -83,7 +83,7 @@ public:
 #else
 			int error = errno;
 #endif
-			printf("socket failed with error: %ld\n", error);
+			printf("socket failed with error: %d\n", error);
 			printf("TCPSocketClient: Error connecting to the socket address.\n");
 			return;
 		}

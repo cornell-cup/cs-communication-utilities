@@ -67,7 +67,7 @@ public:
 	SerialPort(std::string inPort, int inBaudrate) :
 		port(inPort), baudrate(inBaudrate), connected(0) {
 #ifdef _WIN32
-		conn = CreateFile(std::wstring(port.begin(), port.end()).c_str(),
+		conn = CreateFileA(port.c_str(),
 			GENERIC_READ | GENERIC_WRITE,
 			0, NULL,
 			OPEN_EXISTING,
@@ -200,9 +200,8 @@ public:
 	 * @return		Whether or not the write was successful
 	 */
 	int write(char * buffer, unsigned int len) {
-		unsigned long sent;
-
 #ifdef _WIN32
+		unsigned long sent;
 		if (!WriteFile(conn, (void *)buffer, len, &sent, NULL)) {
 			ClearCommError(conn, &errors, &status);
 #else
