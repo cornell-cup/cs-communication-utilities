@@ -199,7 +199,7 @@ public:
 	 * @param len		The number of bytes to write
 	 * @return		Whether or not the write was successful
 	 */
-	int write(char * buffer, unsigned int len) {
+	int write(const char * buffer, unsigned int len) {
 #ifdef _WIN32
 		unsigned long sent;
 		if (!WriteFile(conn, (void *)buffer, len, &sent, NULL)) {
