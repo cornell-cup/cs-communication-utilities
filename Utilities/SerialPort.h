@@ -6,6 +6,9 @@
 #else
 #	include <unistd.h>
 #	include <sys/stat.h>
+#   include <sys/ioctl.h>
+#   include <sys/types.h>
+#   include <sys/stat.h>
 #	include <fcntl.h>
 #	include <termios.h>
 #	define INVALID_HANDLE_VALUE (-1)
@@ -74,7 +77,7 @@ public:
 			FILE_ATTRIBUTE_NORMAL,
 			NULL);
 #else
-		conn = open(port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+		conn = open(port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY | O_NONBLOCK);
 #endif
 
 		if (conn == INVALID_HANDLE_VALUE) {
@@ -106,21 +109,31 @@ public:
 				}
 			}
 #else
-			// https://chrisheydrick.com/2012/06/24/how-to-read-serial-data-from-an-arduino-in-linux-with-c-part-4/
 			struct termios opts;
 			tcgetattr(conn, &opts);
 			// Set baudrate
+            cfmakeraw(&opts);
 			cfsetispeed(&opts, baudrate);
 			cfsetospeed(&opts, baudrate);
-			// 8 bits, no parity, no stop bits
+
+            opts.c_cflag |= (CLOCAL | CREAD);
 			opts.c_cflag &= ~PARENB;
 			opts.c_cflag &= ~CSTOPB;
 			opts.c_cflag &= ~CSIZE;
 			opts.c_cflag |= CS8;
-			// Canonical mode
-			opts.c_lflag |= ICANON;
-			// Commit the serial port settings
+			opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+            opts.c_oflag &= ~OPOST;
+            opts.c_cc[VMIN] = 0;
+            opts.c_cc[VTIME] = 100;
+
 			tcsetattr(conn, TCSANOW, &opts);
+            int status;
+            ioctl(conn, TIOCMGET, &status);
+            status |= TIOCM_DTR;
+            status |= TIOCM_RTS;
+            ioctl(conn, TIOCMSET, &status);
+            usleep(10000);
+
 			connected = true;
 #endif
 		}
