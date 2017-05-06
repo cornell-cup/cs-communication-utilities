@@ -54,7 +54,7 @@ bool NamedPipeClientWindows::open()
 	else
 	{
 		printf("Pipe Connected: %s \n", _pipeName);
-		if (setPipeState(PIPE_READMODE_BYTE))
+		if (setPipeState(PIPE_READMODE_MESSAGE))
 		{
 			startReadPolling();
 			return true;
@@ -137,6 +137,11 @@ void NamedPipeClientWindows::pollServer()
 
 			if (!success && GetLastError() != ERROR_MORE_DATA)
 				sendError("Failed on read. Stopping Read.", GetLastError());
+			if (!success && GetLastError() == ERROR_MORE_DATA)
+			{
+				sendError("More Data Incomming", GetLastError());
+				sendRecieve(_readBuffer, _cbRead);
+			}
 		}
 		sendRecieve(_readBuffer, _cbRead);
 	}

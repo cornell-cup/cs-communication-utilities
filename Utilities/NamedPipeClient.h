@@ -7,7 +7,7 @@
 #include <conio.h>
 #include <tchar.h>
 
-#define BUF_SIZE 4096
+#define BUF_SIZE 8
 
 class NamedPipeClient
 {
