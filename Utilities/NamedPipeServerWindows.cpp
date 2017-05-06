@@ -253,8 +253,8 @@ bool NamedPipeServerWindows::generatePipes()
 			_pipe_name,            // pipe name 
 			PIPE_ACCESS_DUPLEX |     // read/write access 
 			FILE_FLAG_OVERLAPPED,    // overlapped mode 
-			PIPE_TYPE_MESSAGE |      // message-type pipe 
-			PIPE_READMODE_MESSAGE |  // message-read mode 
+			PIPE_TYPE_BYTE |      // message-type pipe 
+			PIPE_READMODE_BYTE |  // message-read mode 
 			PIPE_WAIT,               // blocking mode 
 			INSTANCES,               // number of instances 
 			BUFSIZE * sizeof(unsigned char),   // output buffer size 

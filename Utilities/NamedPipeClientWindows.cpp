@@ -137,8 +137,6 @@ void NamedPipeClientWindows::pollServer()
 
 			if (!success && GetLastError() != ERROR_MORE_DATA)
 				sendError("Failed on read. Stopping Read.", GetLastError());
-			else if (GetLastError() == ERROR_MORE_DATA)
-				sendError("More data on the way!", GetLastError());
 		}
 		sendRecieve(_readBuffer, _cbRead);
 	}
