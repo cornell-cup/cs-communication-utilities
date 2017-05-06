@@ -15,7 +15,8 @@ typedef struct
 {
 	OVERLAPPED oOverlap;
 	HANDLE hPipeInst;
-	unsigned char chRequest[BUFSIZE];
+	unsigned char* r2_data;
+	unsigned int r2_data_size;
 	DWORD cbRead;
 	unsigned char chReply[BUFSIZE];
 	DWORD cbToWrite;
@@ -30,7 +31,7 @@ class NamedPipeServerWindows :
 	friend NamedPipeServer;
 
 public:
-	void setOnRequestCallback(size_t(*_onRequest)(unsigned char * data_in, unsigned char * data_out, size_t size_of_data_in)) override;
+	void setOnRequestCallback(unsigned char *(*onRequest)(unsigned char * data_in, unsigned int * size_data_out, size_t size_data_in)) override;
 	virtual void setOnErrorCallback(void(*onError)(std::string msg, unsigned int ec));
 	virtual void start() override;
 	virtual void stop() override;
@@ -44,7 +45,7 @@ private:
 	HANDLE _hEvents[INSTANCES];
 	bool generatePipes();
 	DWORD _cbRet;
-	size_t(*_onRequest)(unsigned char * data_in, unsigned char * data_out, size_t size_of_data_in);
+	unsigned char *(*_onRequest)(unsigned char * data_in, unsigned int * size_of_msg, size_t size_of_data_in);
 	void(*_onError)(std::string msg, unsigned int ec);
 
 	// Inherited via NamedPipeServer
@@ -53,7 +54,8 @@ private:
 	VOID GetAnswerToRequest(LPPIPEINST);
 	void run();
 	void sendError(std::string msg, unsigned int ec);
-	void readFromClient(LPPIPEINST client);
+	void readLengthFromClient(LPPIPEINST client);
+	void readDataFromClient(LPPIPEINST client);
 	bool checkPendingIO(LPPIPEINST client);
 	void writeToClient(LPPIPEINST client);
 

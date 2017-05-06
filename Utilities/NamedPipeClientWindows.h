@@ -30,7 +30,7 @@ private:
 	HANDLE _pipe;
 	unsigned char _readBuffer[BUF_SIZE];
 	BOOL   _fSuccess = FALSE;
-	DWORD  _cbRead, _cbToWrite, _cbWritten, _dwMode;
+	DWORD  _cbRead, _cbToWrite, _cbWritten;
 	LPTSTR _pipeName;
 	void(*_onRecieveCallBack)(unsigned char *, size_t size);
 	void(*_onErrorCallback)(std::string msg, unsigned int ec);

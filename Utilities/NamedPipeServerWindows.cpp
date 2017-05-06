@@ -7,7 +7,7 @@ NamedPipeServerWindows::NamedPipeServerWindows(LPTSTR pipe_name): _pipe_name(pip
 	
 }
 
-void NamedPipeServerWindows::setOnRequestCallback(size_t(*onRequest)(unsigned char * data_in, unsigned char * data_out, size_t size_of_data_in))
+void NamedPipeServerWindows::setOnRequestCallback(unsigned char *(*onRequest)(unsigned char * data_in, unsigned int * size_data_out, size_t size_data_in))
 {
 	_onRequest = onRequest;
 }
@@ -37,7 +37,7 @@ void NamedPipeServerWindows::writeToClient(LPPIPEINST client)
 	if (success && _cbRet == client->cbToWrite)
 	{
 		client->fPendingIO = FALSE;
-		client->dwState = READING_STATE;
+		client->dwState = READING_LENGTH_STATE;
 		return;
 	}
 
@@ -83,7 +83,7 @@ VOID NamedPipeServerWindows::DisconnectAndReconnect(LPPIPEINST client)
 
 	client->dwState = client->fPendingIO ?
 		CONNECTING_STATE : // still connecting 
-		READING_STATE;     // ready to read 
+		READING_LENGTH_STATE;     // ready to read 
 }
 
 // ConnectToNewClient(HANDLE, LPOVERLAPPED) 
@@ -135,12 +135,39 @@ void NamedPipeServerWindows::sendError(std::string msg, unsigned int ec)
 		_onError(msg, ec);
 }
 
-void NamedPipeServerWindows::readFromClient(LPPIPEINST client)
+void NamedPipeServerWindows::readLengthFromClient(LPPIPEINST client)
 {
+	printf("Reading Length from Client... \n");
 	bool success = ReadFile(
 		client->hPipeInst,
-		client->chRequest,
-		BUFSIZE * sizeof(unsigned char),
+		&client->r2_data_size,
+		4,
+		&client->cbRead,
+		&client->oOverlap);
+
+	if (success && client->cbRead != 0)
+	{
+		client->fPendingIO = FALSE;
+		client->dwState = READING_DATA_STATE;
+	}
+
+	// The read operation is still pending. 
+
+	if (!success && (GetLastError() == ERROR_IO_PENDING))
+	{
+		client->fPendingIO = TRUE;
+	}
+}
+
+void NamedPipeServerWindows::readDataFromClient(LPPIPEINST client)
+{
+	printf("Reading Data from Client... \n");
+	unsigned int length_of_data = 0;
+
+	bool success = ReadFile(
+		client->hPipeInst,
+		client->r2_data,
+		client->r2_data_size,
 		&client->cbRead,
 		&client->oOverlap);
 
@@ -163,7 +190,7 @@ void NamedPipeServerWindows::readFromClient(LPPIPEINST client)
 
 	// An error occurred; disconnect from the client. 
 
-	DisconnectAndReconnect(client);
+	//DisconnectAndReconnect(client);
 }
 
 bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
@@ -180,16 +207,32 @@ bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
 		{
 			// Pending connect operation 
 		case CONNECTING_STATE:
+			printf("Checking connection pending... \n");
 			if (!success)
 			{
 				printf("Error %d.\n", GetLastError());
 				return false;
 			}
-			client->dwState = READING_STATE;
+			client->dwState = READING_LENGTH_STATE;
 			break;
 
 			// Pending read operation 
-		case READING_STATE:
+		case READING_LENGTH_STATE:
+			printf("Checking read length pending... \n");
+			if (_cbRet == 0)
+			{
+				printf("Disconnecting... \n");
+				DisconnectAndReconnect(client);
+				return false;
+			}
+			printf("Size of r2 data: %d \n", client->r2_data_size);
+			client->cbRead = _cbRet;
+			client->r2_data = new unsigned char[client->r2_data_size];
+			client->dwState = READING_DATA_STATE;
+			break;
+
+		case READING_DATA_STATE:
+			printf("Checking read data pending... \n");
 			if (!success || _cbRet == 0)
 			{
 				DisconnectAndReconnect(client);
@@ -197,21 +240,23 @@ bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
 			}
 			client->cbRead = _cbRet;
 			client->dwState = WRITING_STATE;
-			break;
-
 			// Pending write operation 
 		case WRITING_STATE:
+			printf("Checking write pending... \n");
 			if (!success || _cbRet != client->cbToWrite)
 			{
 				DisconnectAndReconnect(client);
 				return false;
 			}
-			client->dwState = READING_STATE;
+
+			delete client->r2_data;
+			delete client->chReply;
+			client->dwState = READING_LENGTH_STATE;
 			break;
 
 		default:
 		{
-			printf("Invalid pipe state.\n");
+			printf("Invalid pipe state. \n");
 		}
 		}
 	}
@@ -222,13 +267,14 @@ VOID NamedPipeServerWindows::GetAnswerToRequest(LPPIPEINST pipe)
 {
 	if (!_onRequest)
 		return;
+	unsigned int size_of_msg;
+	unsigned char * msg = _onRequest(pipe->r2_data, &size_of_msg, pipe->r2_data_size);
 
-	unsigned char msg[BUFSIZE];
-	size_t num_of_byte = _onRequest(pipe->chRequest, msg, pipe->cbRead);
-	msg[num_of_byte] = 0;
-
-	memcpy(pipe->chReply, msg, num_of_byte);
-	pipe->cbToWrite = num_of_byte * sizeof(unsigned char);
+	if (msg)
+	{
+		memcpy(pipe->chReply, msg, size_of_msg);
+		pipe->cbToWrite = size_of_msg * sizeof(unsigned char);
+	}
 }
 
 bool NamedPipeServerWindows::generatePipes()
@@ -253,8 +299,8 @@ bool NamedPipeServerWindows::generatePipes()
 			_pipe_name,            // pipe name 
 			PIPE_ACCESS_DUPLEX |     // read/write access 
 			FILE_FLAG_OVERLAPPED,    // overlapped mode 
-			PIPE_TYPE_BYTE |      // message-type pipe 
-			PIPE_READMODE_BYTE |  // message-read mode 
+			PIPE_TYPE_MESSAGE |      // message-type pipe 
+			PIPE_READMODE_MESSAGE |  // message-read mode 
 			PIPE_WAIT,               // blocking mode 
 			INSTANCES,               // number of instances 
 			BUFSIZE * sizeof(unsigned char),   // output buffer size 
@@ -276,7 +322,7 @@ bool NamedPipeServerWindows::generatePipes()
 
 		_pipe[i].dwState = _pipe[i].fPendingIO ?
 			CONNECTING_STATE : // still connecting 
-			READING_STATE;     // ready to read 
+			READING_LENGTH_STATE;     // ready to read 
 	}
 }
 
@@ -326,11 +372,15 @@ void NamedPipeServerWindows::run()
 
 		switch (_pipe[i].dwState)
 		{
-		case READING_STATE:
+		case READING_LENGTH_STATE:
 
-			readFromClient(&_pipe[i]);
+			readLengthFromClient(&_pipe[i]);
 			break;
 
+		case READING_DATA_STATE:
+
+			readDataFromClient(&_pipe[i]);
+			break;
 		case WRITING_STATE:
 			
 			GetAnswerToRequest(&_pipe[i]);

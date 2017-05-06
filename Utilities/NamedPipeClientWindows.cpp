@@ -20,6 +20,8 @@ void NamedPipeClientWindows::send(unsigned char * msg, size_t size)
 		&_cbWritten,             // bytes written 
 		NULL); // not overlapped 
 
+
+	printf("Sent message of size: %d \n" , _cbWritten);
 	if (!success)
 	{
 		sendError("Unabled to send message", -3);
@@ -124,25 +126,34 @@ void NamedPipeClientWindows::startReadPolling()
 void NamedPipeClientWindows::pollServer()
 {
 	printf("Started polling %s server. \n", _pipeName);
+		unsigned int size_of_data = 0;
+		unsigned char* r2_data = nullptr;
 		while (_reading) {
 			BOOL success = FALSE;
-			while (!success) {
+			while (!success && _reading) {
 
 			success = ReadFile(
 				_pipe,    // pipe handle 
-				_readBuffer,    // buffer to receive reply 
-				BUF_SIZE * sizeof(unsigned char),  // size of buffer 
+				&size_of_data,    // buffer to receive reply 
+				4,  // size of buffer 
+				&_cbRead,  // number of bytes read 
+				NULL);    // not overlapped 
+
+				r2_data = new unsigned char[size_of_data];
+				success = ReadFile(
+				_pipe,    // pipe handle 
+				r2_data,    // buffer to receive reply 
+				size_of_data,  // size of buffer 
 				&_cbRead,  // number of bytes read 
 				NULL);    // not overlapped 
 
 			if (!success && GetLastError() != ERROR_MORE_DATA)
-				sendError("Failed on read. Stopping Read.", GetLastError());
-			if (!success && GetLastError() == ERROR_MORE_DATA)
 			{
-				sendError("More Data Incomming", GetLastError());
-				sendRecieve(_readBuffer, _cbRead);
+				sendError("Failed on read. Stopping Read.", GetLastError());
+				_reading = false;
 			}
 		}
-		sendRecieve(_readBuffer, _cbRead);
+		if(success)
+			sendRecieve(r2_data, size_of_data);
 	}
 }
