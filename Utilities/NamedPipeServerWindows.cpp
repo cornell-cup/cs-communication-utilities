@@ -221,8 +221,6 @@ bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
 			printf("Checking read length pending... \n");
 			if (_cbRet == 0)
 			{
-				printf("Disconnecting... \n");
-				DisconnectAndReconnect(client);
 				return false;
 			}
 			printf("Size of r2 data: %d \n", client->r2_data_size);
@@ -233,9 +231,8 @@ bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
 
 		case READING_DATA_STATE:
 			printf("Checking read data pending... \n");
-			if (!success || _cbRet == 0)
+			if (_cbRet == 0)
 			{
-				DisconnectAndReconnect(client);
 				return false;
 			}
 			client->cbRead = _cbRet;
@@ -245,7 +242,6 @@ bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
 			printf("Checking write pending... \n");
 			if (!success || _cbRet != client->cbToWrite)
 			{
-				DisconnectAndReconnect(client);
 				return false;
 			}
 
@@ -299,12 +295,12 @@ bool NamedPipeServerWindows::generatePipes()
 			_pipe_name,            // pipe name 
 			PIPE_ACCESS_DUPLEX |     // read/write access 
 			FILE_FLAG_OVERLAPPED,    // overlapped mode 
-			PIPE_TYPE_MESSAGE |      // message-type pipe 
-			PIPE_READMODE_MESSAGE |  // message-read mode 
+			PIPE_TYPE_BYTE |      // message-type pipe 
+			PIPE_READMODE_BYTE |  // message-read mode 
 			PIPE_WAIT,               // blocking mode 
 			INSTANCES,               // number of instances 
-			BUFSIZE * sizeof(unsigned char),   // output buffer size 
-			BUFSIZE * sizeof(unsigned char),   // input buffer size 
+			16000000 * sizeof(unsigned char),   // output buffer size 
+			16000000 * sizeof(unsigned char),   // input buffer size 
 			PIPE_TIMEOUT,            // client time-out 
 			NULL);                   // default security attributes 
 
@@ -373,16 +369,13 @@ void NamedPipeServerWindows::run()
 		switch (_pipe[i].dwState)
 		{
 		case READING_LENGTH_STATE:
-
 			readLengthFromClient(&_pipe[i]);
 			break;
 
 		case READING_DATA_STATE:
-
 			readDataFromClient(&_pipe[i]);
 			break;
 		case WRITING_STATE:
-			
 			GetAnswerToRequest(&_pipe[i]);
 			writeToClient(&_pipe[i]);
 			break;

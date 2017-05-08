@@ -56,7 +56,7 @@ bool NamedPipeClientWindows::open()
 	else
 	{
 		printf("Pipe Connected: %s \n", _pipeName);
-		if (setPipeState(PIPE_READMODE_MESSAGE))
+		if (setPipeState(PIPE_READMODE_BYTE))
 		{
 			startReadPolling();
 			return true;
@@ -130,6 +130,7 @@ void NamedPipeClientWindows::pollServer()
 		unsigned char* r2_data = nullptr;
 		while (_reading) {
 			BOOL success = FALSE;
+			FlushFileBuffers(_pipeName);
 			while (!success && _reading) {
 
 			success = ReadFile(

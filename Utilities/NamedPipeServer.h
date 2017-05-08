@@ -6,7 +6,7 @@
 #define WRITING_STATE 3
 #define INSTANCES 5 
 #define PIPE_TIMEOUT 5000
-#define BUFSIZE 4096
+#define BUFSIZE 16000000
 
 
 class NamedPipeServer
