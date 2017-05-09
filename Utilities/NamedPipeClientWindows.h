@@ -4,6 +4,8 @@
 #include <conio.h>
 #include <tchar.h>
 #include <thread>
+#include <intrin.h>
+
 
 class NamedPipeClientWindows :
 	public NamedPipeClient

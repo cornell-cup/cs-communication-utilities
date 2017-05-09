@@ -140,6 +140,8 @@ void NamedPipeClientWindows::pollServer()
 				&_cbRead,  // number of bytes read 
 				NULL);    // not overlapped 
 
+				size_of_data = _byteswap_ushort(size_of_data);
+				
 				r2_data = new unsigned char[size_of_data];
 				success = ReadFile(
 				_pipe,    // pipe handle 

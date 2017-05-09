@@ -10,6 +10,7 @@
 #include <string>
 #include <cstring>
 #include <thread>
+#include <intrin.h>
 
 typedef struct
 {

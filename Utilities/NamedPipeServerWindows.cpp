@@ -164,6 +164,9 @@ void NamedPipeServerWindows::readDataFromClient(LPPIPEINST client)
 	printf("Reading Data from Client... \n");
 	unsigned int length_of_data = 0;
 
+	client->r2_data_size = _byteswap_ushort(client->r2_data_size);
+	printf("Length of data: %d", client->r2_data_size);
+
 	bool success = ReadFile(
 		client->hPipeInst,
 		client->r2_data,
