@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "NamedPipeServerWindows.h"
 
 
@@ -25,10 +24,18 @@ NamedPipeServerWindows::~NamedPipeServerWindows()
 
 void NamedPipeServerWindows::writeToClient(LPPIPEINST client)
 {
+	unsigned char * msg_out = new unsigned char[client->cbToWrite + 4];
+	msg_out[0] = client->cbToWrite & 0xff >> 24;
+	msg_out[1] = (client->cbToWrite & 0xff) >> 16;
+	msg_out[2] = (client->cbToWrite & 0xff) >> 8;
+	msg_out[3] = (client->cbToWrite & 0xff);
+
+	memcpy(msg_out + 4, client->r2_data, client->cbToWrite);
+
 	bool success = WriteFile(
 		client->hPipeInst,
 		client->chReply,
-		client->cbToWrite,
+		client->cbToWrite + 4,
 		&_cbRet,
 		&client->oOverlap);
 
@@ -162,9 +169,7 @@ void NamedPipeServerWindows::readLengthFromClient(LPPIPEINST client)
 void NamedPipeServerWindows::readDataFromClient(LPPIPEINST client)
 {
 	printf("Reading Data from Client... \n");
-	unsigned int length_of_data = 0;
 
-	client->r2_data_size = _byteswap_ushort(client->r2_data_size);
 	printf("Length of data: %d", client->r2_data_size);
 
 	bool success = ReadFile(
@@ -221,11 +226,12 @@ bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
 
 			// Pending read operation 
 		case READING_LENGTH_STATE:
-			printf("Checking read length pending... \n");
+			//printf("Checking read length pending... \n");
 			if (_cbRet == 0)
 			{
 				return false;
 			}
+			client->r2_data_size = _byteswap_ulong(client->r2_data_size);
 			printf("Size of r2 data: %d \n", client->r2_data_size);
 			client->cbRead = _cbRet;
 			client->r2_data = new unsigned char[client->r2_data_size];
@@ -233,7 +239,7 @@ bool NamedPipeServerWindows::checkPendingIO(LPPIPEINST client)
 			break;
 
 		case READING_DATA_STATE:
-			printf("Checking read data pending... \n");
+			//printf("Checking read data pending... \n");
 			if (_cbRet == 0)
 			{
 				return false;
@@ -363,7 +369,7 @@ void NamedPipeServerWindows::run()
 
 		if (!checkPendingIO(&_pipe[i]))
 		{
-			printf("Pipe Borked: %d \n", i);
+			//printf("Pipe Borked: %d \n", i);
 			continue;
 		}
 

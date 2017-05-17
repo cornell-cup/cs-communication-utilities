@@ -13,15 +13,24 @@ NamedPipeClientWindows::~NamedPipeClientWindows()
 
 void NamedPipeClientWindows::send(unsigned char * msg, size_t size)
 {
+	unsigned char * msg_out = new unsigned char[size + 4];
+	msg_out[0] = size & 0xff >> 24;
+	msg_out[1] = (size & 0xff) >> 16;
+	msg_out[2] = (size & 0xff) >> 8;
+	msg_out[3] = (size & 0xff);
+
+	memcpy(msg_out + 4, msg, size);
+
 	BOOL success = WriteFile(
 		_pipe,                  // pipe handle 
-		msg,             // message 
-		size,              // message length 
+		msg_out,             // message 
+		size+4,              // message length 
 		&_cbWritten,             // bytes written 
 		NULL); // not overlapped 
 
 
 	printf("Sent message of size: %d \n" , _cbWritten);
+
 	if (!success)
 	{
 		sendError("Unabled to send message", -3);
@@ -140,7 +149,7 @@ void NamedPipeClientWindows::pollServer()
 				&_cbRead,  // number of bytes read 
 				NULL);    // not overlapped 
 
-				size_of_data = _byteswap_ushort(size_of_data);
+				size_of_data = _byteswap_ulong(size_of_data);
 				
 				r2_data = new unsigned char[size_of_data];
 				success = ReadFile(
