@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import platform
 
 CC = "g++"
 
@@ -16,9 +17,16 @@ HEADER_INCLUDES = [
   "-I", "lib/googletest/include",
 ]
 
-SHARED_LIBRARIES = [
-  "lib/googletest/lib/libgtest.dll",
-]
+if platform.system() == "Windows" :
+  SHARED_LIBRARIES = [
+    "lib/googletest/lib/libgtest.dll",
+  ]
+elif platform.system() == "Linux":
+  SHARED_LIBRARIES = [
+    "lib/googletest/lib/libgtest.a",
+  ]
+else:
+  SHARED_LIBRARIES = [] #some other platform
 
 OUTPUT_DIR = "bin"
 if not os.path.isdir(OUTPUT_DIR):
