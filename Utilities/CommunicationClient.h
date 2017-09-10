@@ -2,19 +2,23 @@
 #define _COMMUNICATION_CLIENT
 
 class CommunicationClient {
+protected:
+    int connected;
 public:
     /** Constructor */
     CommunicationClient() {};
 
     /** Destructor */
-    virtual ~CommunicationClient() {};
+    virtual ~CommunicationClient() {
+        close();
+    };
 
     /** Connect or reconnect to the communication medium. */
     virtual void connect() {};
 
     /** @return    Whether or not the communication medium is connected. */
     virtual bool isConnected() {
-        return false;
+        return connected;
     };
 
     /**
@@ -36,6 +40,11 @@ public:
      */
     virtual int write(const char * buffer, unsigned int len) {
         return 0;
+    };
+
+    /** Close the connection */
+    virtual void close() {
+        connected = false;
     };
 };
 
