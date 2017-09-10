@@ -2,20 +2,20 @@
 #define _COMMUNICATION_SERVER
 
 #include <functional>
+#include <memory>
 #include <thread>
 
 template<class T>
 class CommunicationServer {
 protected:
-    /**
-     * Whether or not the server is listening
-     */
+    /** Internal message to close */
+    volatile int closeMessage;
+
+    /** Whether or not the server is listening */
     int listening;
 
-    /**
-     * Internal message to close
-     */
-    volatile int closeMessage;
+    /** Handler thread */
+    std::shared_ptr<std::thread> handlerThread;
 
     /**
      * Continuously handle received data (done in a new thread)
@@ -25,32 +25,47 @@ protected:
      *                  will be available only within the call to the
      *                  handler, otherwise it may be deleted at any time.
      */
-    virtual void handle(std::function<T> handler) {};
+    virtual void handle(std::function<T> handler) {
+        handlerThread = nullptr;
+        closeMessage = 0;
+    };
 public:
     /** Constructor */
-    CommunicationServer() {};
+    CommunicationServer() : closeMessage(0), listening(0) {};
 
     /** Destructor */
-    virtual ~CommunicationServer() {};
+    virtual ~CommunicationServer() {
+        close();
+    };
 
     /** @return Whether or not the server is listening */
-    virtual bool isListening() {
-        return false;
+    virtual int isListening() {
+        return listening;
     };
 
     /**
      * Start the server and begin listening.
      *
      * @param handler   The function to handle data from clients
+     * @return  Whether the server successfully begins listening. If a the
+     *          server is already listening then it will return false.
      */
-    void server(std::function<T> handler) {
-        std::thread(&CommunicationServer::handle, this, handler).detach();
-        listening = 1;
+    int server(std::function<T> handler) {
+        if (handlerThread == nullptr) {
+            handlerThread = std::make_shared<std::thread>(&CommunicationServer::handle, this, handler);
+            handlerThread->detach();
+            closeMessage = 0;
+            listening = 1;
+            return true;
+        }
+        return false;
     };
 
     /** Close the server and stop listening. */
     virtual void close() {
+        handlerThread = nullptr;
         closeMessage = 1;
+        listening = 0;
     };
 };
 
