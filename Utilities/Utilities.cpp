@@ -100,10 +100,12 @@ int main(int argc, char** argv)
 			printf("Usage: %s %s <address> <port>\n", argv[0], argv[1]);
 			return 1;
 		}
-		UDPSocketServer conn(std::string(argv[2]), std::atoi(argv[3]));
-		conn.server([](char * buffer, unsigned int buffer_len) {
+		UDPSocketServer conn;
+		conn.setDataHandler([](char * buffer, unsigned int buffer_len) {
 			printf(buffer);
 		});
+
+		conn.bindSocket(std::string(argv[2]), std::atoi(argv[3]));
 		if (conn.isListening()) {
 			while (!quit) {
 				Sleep(100);

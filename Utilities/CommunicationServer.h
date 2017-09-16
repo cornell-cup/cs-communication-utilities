@@ -16,6 +16,7 @@ protected:
 
     /** Handler thread */
     std::shared_ptr<std::thread> handlerThread;
+    std::function<T> handler;
 
     /**
      * Continuously handle received data (done in a new thread)
@@ -43,14 +44,23 @@ public:
         return listening;
     };
 
+    /*
+    * Specify how the Server handles data from clients
+    *
+    * @param handler   The function to handle data from clients
+    */
+    void setDataHandler(std::function<T> handler)
+    {
+        this->handler = handler;
+    }
+
     /**
      * Start the server and begin listening.
      *
-     * @param handler   The function to handle data from clients
      * @return  Whether the server successfully begins listening. If a the
      *          server is already listening then it will return false.
      */
-    int server(std::function<T> handler) {
+    int listen(){
         if (handlerThread == nullptr) {
             handlerThread = std::make_shared<std::thread>(&CommunicationServer::handle, this, handler);
             handlerThread->detach();

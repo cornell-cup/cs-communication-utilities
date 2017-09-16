@@ -49,6 +49,9 @@ private:
     /** Bound socket address */
     SOCKADDR_IN addr;
 
+    /** Is Socket Alive **/
+    bool socketLive = false;
+
 protected:
     void handle(std::function<void(char *, unsigned int)> handler) {
         char * buffer = new char[DEFAULT_BUFFER_SIZE];
@@ -69,35 +72,57 @@ protected:
         CommunicationServer::handle(handler);
     };
 
+    static int createSocket(SOCKET& sockId)
+    {   
+        if ((sockId = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
+            printf("UDPSocketServer: Could not create socket.\n");
+            return 0;
+        } 
+        return 1;
+    };
+
 public:
     /**
      * Initialize a new UDP socket server.
-     *
-     * @param address    The address to bind to
-     * @param port        The port to listen on
      */
-    UDPSocketServer(std::string inAddress, int inPort) :
-            CommunicationServer(), address(inAddress), port(inPort) {
-        if ((socketId = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
-            printf("UDPSocketServer: Could not create socket.\n");
-            return;
-        }
+    UDPSocketServer() : CommunicationServer(){
+        socketLive = createSocket(socketId);
+    };
+
+
+    /**
+    * Binds the UDP socket to provided address and port.
+    * Returns PORT_BIND_ERROR if binding failes.
+    *
+    * @param address    The address to bind to
+    * @param port        The port to listen on    
+    **/
+    int bindSocket(const std::string inAddress, int inPort)
+    {
+        if(!socketLive && !(socketLive = createSocket(socketId)))
+            return 0;
+
+        this->address = inAddress;
+        this->port = inPort;
 
         addr.sin_family = AF_INET;
         // TODO Support IPv6, use InetPton (inet_addr is deprecated)
         addr.sin_addr.s_addr = inet_addr(address.c_str());
-        addr.sin_port = htons(port);
+        addr.sin_port = htons(port);   
 
         if (bind(socketId, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
             printf("UDPSocketServer: Error binding to the socket address.\n");
-            return;
+            return 0;
         }
-    };
+        else
+            return 1;
+    }
 
     ~UDPSocketServer() {};
 
     void close() {
         CommunicationServer::close();
+        socketLive = false;
 #ifdef _WIN32
         closesocket(socketId);
 #else
