@@ -125,23 +125,50 @@ TEST_F(UDPSocketTest, TestBindToUsedPortFailServer)
 
 TEST_F(UDPSocketTest, TestCloseRebindAndListen)
 {
-    char data1[6] = "test1";    
+    char data1[6] = "test1";
     char *result = new char[4096];
 
     server.setDataHandler([result](char *buffer, unsigned int buffer_len) {
         std::strncpy(result, buffer, buffer_len);
     });
-    server.bindSocket("127.0.0.1",port);
+    server.bindSocket("127.0.0.1", port);
     server.listen();
     server.close();
 
     server.listen();
 
-    ASSERT_EQ(1,server.bindSocket("127.0.0.1",port));
+    ASSERT_EQ(1, server.bindSocket("127.0.0.1", port));
 
-    client.write(data1,6);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));    
-    EXPECT_STREQ(data1,result);
+    client.write(data1, 6);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_STREQ(data1, result);
 
+    delete result;
+}
+
+TEST_F(UDPSocketTest, TestClientSendToUnknownPort)
+{
+    char data[5] = "test";
+    ASSERT_TRUE(client.write(data, 5));
+}
+
+TEST_F(UDPSocketTest, TestClientCloseConnectSend)
+{
+    char data[5] = "test";
+    char *result = new char[4096];
+
+    server.setDataHandler([result](char *buffer, unsigned int buffer_len) {
+        std::strncpy(result, buffer, buffer_len);
+    });
+    server.bindSocket("127.0.0.1", port);
+    server.listen();
+
+    client.close();
+    ASSERT_TRUE(client.connect());
+
+    ASSERT_TRUE(client.write(data,5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_STREQ(data, result);
+    
     delete result;
 }

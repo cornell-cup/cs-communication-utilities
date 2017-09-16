@@ -46,10 +46,15 @@ private:
 
     /** Bound socket address */
     SOCKADDR_IN addr;
-
-    /** Whether or not the server is listening */
-    int connected;
-
+protected:
+    static int createSocket(SOCKET& sockID)
+    {
+        if ((sockID = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
+            printf("UDPSocketClient: Could not create socket.\n");
+            return 0;
+        }
+        return 1;
+    }
 public:
     /**
      * Initialize a new UDP socket client.
@@ -57,13 +62,9 @@ public:
      * @param address   The address to connect to
      * @param port      The port to connect to
      */
+    
     UDPSocketClient(std::string inAddress, int inPort) :
-            CommunicationClient(), address(inAddress), port(inPort), connected(false) {
-        if ((socketId = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
-            printf("UDPSocketClient: Could not create socket.\n");
-            return;
-        }
-
+            CommunicationClient(), address(inAddress), port(inPort) {
         addr.sin_family = AF_INET;
         // TODO Support IPv6, use InetPton (inet_addr is deprecated)
         addr.sin_addr.s_addr = inet_addr(address.c_str());
@@ -77,15 +78,17 @@ public:
      */
     ~UDPSocketClient() {};
 
-    void connect() {
+    int connect() {
         if (!connected) {
+            if(!createSocket(socketId))
+                return 0;
             if (::connect(socketId, (SOCKADDR*)&addr, sizeof(addr)) == SOCKET_ERROR) {
                 printf("UDPSocketClient: Error binding to the socket address.\n");
-                return;
+                return 0;
             }
-
             connected = true;
         }
+        return 1;
     }
 
     /**
@@ -108,7 +111,6 @@ public:
             return 0;
         }
         // TODO Handle error codes and reconnection
-
         return 1;
     };
 

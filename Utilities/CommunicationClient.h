@@ -6,7 +6,7 @@ protected:
     int connected;
 public:
     /** Constructor */
-    CommunicationClient() {};
+    CommunicationClient() : connected(false) {};
 
     /** Destructor */
     virtual ~CommunicationClient() {
@@ -14,7 +14,7 @@ public:
     };
 
     /** Connect or reconnect to the communication medium. */
-    virtual void connect() {};
+    virtual int connect() {};
 
     /** @return    Whether or not the communication medium is connected. */
     virtual bool isConnected() {
